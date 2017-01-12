@@ -328,7 +328,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
         	
 			objModel.lit = true;
 			objModel.drawContour = false;
-			objModel.color = vec3(1.0, 1.0, 1.0);
+			objModel.color = vec3(1.0, 0.0, 1.0);
 			glClearColor(1, 1, 1, 1);
 			renderModel(0, 0, winWidth / 2, winHeight, objModel, eye);
 			
@@ -515,7 +515,7 @@ void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model&
     
     gluLookAt(eye.x, eye.y, eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	
-	glColor3f(model.color.x, model.color.y, model.color.z);
+	glColor4f(model.color.x, model.color.y, model.color.z, 0.7);
 	
     glPushMatrix();
     //if (!model.drawContour) {
