@@ -217,7 +217,7 @@ void ReSizeGLScene(GLsizei width, GLsizei height);
 
 float CalculateFPS();
 
-void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model& model, const vec3& eye);
+void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model& model, vec3& eye);
 
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
@@ -464,8 +464,8 @@ void ReSizeGLScene(GLsizei width, GLsizei height){
 
 bool lineFacet(vec3 &p1, vec3 &p2, const Face &face)
 {
-   double EPS = (double)0.00000000001;
    double d;
+   //double EPS = 0.000000001;
    double a1,a2,a3;
    double total,denom,mu;
    vec3 n, pa1, pa2, pa3, p;
@@ -485,14 +485,14 @@ bool lineFacet(vec3 &p1, vec3 &p2, const Face &face)
 
    /* Calculate the position on the line that intersects the plane */
    denom = n.x * (p2.x - p1.x) + n.y * (p2.y - p1.y) + n.z * (p2.z - p1.z);
-   if (ABS(denom) < EPS)         /* Line and plane don't intersect */
-      return(FALSE);
+   if (fabs(denom) < EPS)         /* Line and plane don't intersect */
+      return false;
    mu = - (d + n.x * p1.x + n.y * p1.y + n.z * p1.z) / denom;
    p.x = p1.x + mu * (p2.x - p1.x);
    p.y = p1.y + mu * (p2.y - p1.y);
    p.z = p1.z + mu * (p2.z - p1.z);
    if (mu < 0 || mu > 1)   /* Intersection not along line segment */
-      return(FALSE);
+      return false;
 
 
    /* Determine whether or not the intersection point is bounded by pa,pb,pc */
@@ -500,39 +500,39 @@ bool lineFacet(vec3 &p1, vec3 &p2, const Face &face)
    pa1.y = pa.y - p.y;
    pa1.z = pa.z - p.z;
    pa1 = Normalized(pa1);
-   pa2.x = pb.x - px;
-   pa2.y = pb.y - py;
-   pa2.z = pb.z - pz;
+   pa2.x = pb.x - p.x;
+   pa2.y = pb.y - p.y;
+   pa2.z = pb.z - p.z;
    pa2 = Normalized(pa2);
-   pa3.x = pc.x - px;
-   pa3.y = pc.y - py;
-   pa3.z = pc.z - pz;
+   pa3.x = pc.x - p.x;
+   pa3.y = pc.y - p.y;
+   pa3.z = pc.z - p.z;
    pa3 = Normalized(pa3);
    a1 = pa1.x*pa2.x + pa1.y*pa2.y + pa1.z*pa2.z;
    a2 = pa2.x*pa3.x + pa2.y*pa3.y + pa2.z*pa3.z;
    a3 = pa3.x*pa1.x + pa3.y*pa1.y + pa3.z*pa1.z;
-   total = (acos(a1) + acos(a2) + acos(a3)) * RTOD;
-   if (ABS(total - 360) > EPS)
-      return(FALSE);
+   total = (acos(a1) + acos(a2) + acos(a3));
+   if (fabs(total - 3.14) > EPS)
+      return(false);
 
-   return(TRUE);
+   return(true);
 }
 
-bool edgeVisible(const Edge &edge, const Model &model, const vec3 &eye){
+bool edgeVisible(Edge &edge, Model &model, vec3 &eye){
 	bool visible = true;
 	for (int i=0; i<model.faces.size(); i++){
-		p = edge.pointA;
-		if (lineFacet(p, eye, model.faces[i]))
+		vec3 p = edge.pointA.v;
+		if (lineFacet(p, eye, model.faces[i]) == false)
 			return false;
 
-		p = edge.pointB;
-		if (lineFacet(p, eye, model.faces[i]))
+		p = edge.pointB.v;
+		if (lineFacet(p, eye, model.faces[i]) == false)
 			return false;
 	}
 	return visible;
 }
 
-void drawContour(Model& model, const vec3& eye){
+void drawContour(Model& model, vec3& eye){
 	glLineWidth(3.0);
 	
 	vec3 oz = Normalized(eye);
@@ -581,7 +581,7 @@ void drawContour(Model& model, const vec3& eye){
 	}
 }
 
-void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model& model, const vec3& eye){
+void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model& model,vec3& eye){
 	if (model.lit){
 		glEnable(GL_LIGHTING);
 	}
