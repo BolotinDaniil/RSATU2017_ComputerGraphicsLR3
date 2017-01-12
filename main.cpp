@@ -43,6 +43,12 @@ struct Point{
 
 struct Face{
 	Point points[3];
+	vec3 normal;
+
+	void calcNormal(){
+		vec3 vp[] = { points[0].v, points[1].v, points[2].v };
+		normal = GetNormal(vp);
+	}
 
     bool operator ==(const Face& f) const {
         bool equals = true;
@@ -60,6 +66,7 @@ struct Face{
 struct Edge{
 	Point pointA;
 	Point pointB;
+	bool wasVisible;
 	
 	vector<Face> faces;
 	//Face faceA;
@@ -88,13 +95,13 @@ struct Model{
 		loadModelFromFile(fileName, *this);
 	}
 	
-	void addEdges(const Face& face){
+	void addEdges(Face& face){
 		addEdge(face.points[0], face.points[1], face);
 		addEdge(face.points[1], face.points[2], face);
 		addEdge(face.points[2], face.points[0], face);
 	}
 	
-	void addEdge(const Point& pointA, const Point& pointB, const Face& face){
+	void addEdge(Point& pointA, Point& pointB, Face& face){
 		bool edgeExists = false;
 		for (int i = 0; i < edges.size() && !edgeExists; i++){
 			if (edges[i].pointA == pointA && edges[i].pointB == pointB
@@ -108,6 +115,7 @@ struct Model{
 			Edge edge;
 			edge.pointA = pointA;
 			edge.pointB = pointB;
+			edge.wasVisible = true;
 			edge.faces.push_back(face);
 			
 			edges.push_back(edge);
@@ -165,6 +173,7 @@ struct Model{
 					face.points[i] = p;
 					//model.points.push_back(p);
 	    		}
+				face.calcNormal();
 	    		model.faces.push_back(face);
 	    		model.addEdges(face);
 	    		continue;
@@ -208,7 +217,7 @@ void ReSizeGLScene(GLsizei width, GLsizei height);
 
 float CalculateFPS();
 
-void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, const Model& model, const vec3& eye);
+void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model& model, const vec3& eye);
 
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
@@ -442,48 +451,55 @@ void ReSizeGLScene(GLsizei width, GLsizei height){
     winHeight = height;
 }
 
-void drawContour(const Model& model, const vec3& eye){
-	glLineWidth(5.0);
+void drawContour(Model& model, const vec3& eye){
+	glLineWidth(3.0);
 	
 	vec3 oz = Normalized(eye);
 	
 	glColor3f(0.0, 0.0, 0.0);
+	// мы будем игнорировать из расмотрения случайно часть ребёр, которые на прошлой итерации не были визуализированы
+	// из-за чего картинка чуть-чуть бликует при передвижении камеры
+	// зато значительно растёт FPS
+	static int RAND_BORDER = RAND_MAX * 0.25;
 	for (int i = 0; i < model.edges.size(); i++) {
-		Edge edge = model.edges[i];
-        if (edge.faces.size() >= 2) {
-            Face faceA = edge.faces[0];
-            Face faceB = edge.faces[1];
+        if (model.edges[i].faces.size() >= 2 && (model.edges[i].wasVisible || (rand() < RAND_BORDER))) {
+			Edge *edge = &model.edges[i];
+            Face faceA = edge->faces[0];
+            Face faceB = edge->faces[1];
 
             vec3 aPoints[] = { faceA.points[0].v, faceA.points[1].v, faceA.points[2].v };
-            vec3 na = GetNormal(aPoints);
+            vec3 na = faceA.normal;
 
             vec3 bPoints[] = { faceB.points[0].v, faceB.points[1].v, faceB.points[2].v };
-            vec3 nb = GetNormal(bPoints);
+            vec3 nb = faceB.normal;
 
-            vec3 v0 = edge.pointA.v;
+            vec3 v0 = edge->pointA.v;
+			v0 = eye - v0;
 
-            double a = na & (eye - v0);
-            double b = nb & (eye - v0);
-            double angle = GetAngle(na, nb);
+            double a = na & v0;
+            double b = nb & v0;
+            // double angle = GetAngle(na, nb);
 
             if (a*b <= 0) {
+				edge->wasVisible = true;
                 Point p;
                 glBegin(GL_LINES);
                 double scale = 1;
-                p = edge.pointA;
-                glNormal3f(p.vn.x, p.vn.y, p.vn.z);
-                glVertex3f(p.v.x * scale, p.v.y * scale, p.v.z * scale);
+                p = edge->pointA;
+                //glNormal3f(p.vn.x, p.vn.y, p.vn.z);
+                glVertex3f(p.v.x, p.v.y, p.v.z);
 
-                p = edge.pointB;
-                glNormal3f(p.vn.x, p.vn.y, p.vn.z);
-                glVertex3f(p.v.x * scale, p.v.y * scale, p.v.z * scale);
+                p = edge->pointB;
+                //glNormal3f(p.vn.x, p.vn.y, p.vn.z);
+                glVertex3f(p.v.x, p.v.y, p.v.z);
                 glEnd();
             }
+			else edge->wasVisible = false;
         }
 	}
 }
 
-void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, const Model& model, const vec3& eye){
+void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model& model, const vec3& eye){
 	if (model.lit){
 		glEnable(GL_LIGHTING);
 	}
