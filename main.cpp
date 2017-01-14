@@ -460,38 +460,39 @@ void drawContour(Model& model, const vec3& eye){
 	// мы будем игнорировать из расмотрения случайно часть ребёр, которые на прошлой итерации не были визуализированы
 	// из-за чего картинка чуть-чуть бликует при передвижении камеры
 	// зато значительно растёт FPS
-	static int RAND_BORDER = RAND_MAX * 0.25;
+	static int RAND_BORDER = RAND_MAX * 0.03;
 	for (int i = 0; i < model.edges.size(); i++) {
         if (model.edges[i].faces.size() >= 2 && (model.edges[i].wasVisible || (rand() < RAND_BORDER))) {
+		//if ((model.edges[i].wasVisible || (rand() < RAND_BORDER))) {
 			Edge *edge = &model.edges[i];
-            Face faceA = edge->faces[0];
-            Face faceB = edge->faces[1];
+            Face *faceA = &edge->faces[0];
+            Face *faceB = &edge->faces[1];
 
-            vec3 aPoints[] = { faceA.points[0].v, faceA.points[1].v, faceA.points[2].v };
-            vec3 na = faceA.normal;
+            //vec3 aPoints[] = { faceA.points[0].v, faceA.points[1].v, faceA.points[2].v };
+            vec3 *na = &faceA->normal;
 
-            vec3 bPoints[] = { faceB.points[0].v, faceB.points[1].v, faceB.points[2].v };
-            vec3 nb = faceB.normal;
+            //vec3 bPoints[] = { faceB.points[0].v, faceB.points[1].v, faceB.points[2].v };
+            vec3 *nb = &faceB->normal;
 
             vec3 v0 = edge->pointA.v;
 			v0 = eye - v0;
 
-            double a = na & v0;
-            double b = nb & v0;
-            // double angle = GetAngle(na, nb);
+            bool a = ((*na) & v0) > 0;
+            bool b = ((*nb) & v0) > 0;
+            double angle = GetAngle((*na), (*nb));
 
-            if (a*b <= 0) {
+            if (a^b || angle >  1) {
 				edge->wasVisible = true;
-                Point p;
+                Point *p;
                 glBegin(GL_LINES);
                 double scale = 1;
-                p = edge->pointA;
+                p = &edge->pointA;
                 //glNormal3f(p.vn.x, p.vn.y, p.vn.z);
-                glVertex3f(p.v.x, p.v.y, p.v.z);
+                glVertex3f(p->v.x, p->v.y, p->v.z);
 
-                p = edge->pointB;
+                p = &edge->pointB;
                 //glNormal3f(p.vn.x, p.vn.y, p.vn.z);
-                glVertex3f(p.v.x, p.v.y, p.v.z);
+                glVertex3f(p->v.x, p->v.y, p->v.z);
                 glEnd();
             }
 			else edge->wasVisible = false;
@@ -515,7 +516,7 @@ void renderModel(GLint vpX, GLint vpY, GLsizei vpWidth, GLsizei vpHeight, Model&
     
     gluLookAt(eye.x, eye.y, eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	
-	glColor4f(model.color.x, model.color.y, model.color.z, 0.7);
+	glColor4f(model.color.x, model.color.y, model.color.z, 1);
 	
     glPushMatrix();
     //if (!model.drawContour) {
